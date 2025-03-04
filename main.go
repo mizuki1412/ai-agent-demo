@@ -11,34 +11,37 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"log"
+	"mizuki/project/ai-agent-demo/aikit"
 )
 
 func main() {
 	r := &cobra.Command{
 		Use: "main",
 		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+
+			//ctx := context.Background()
 			apiKey := configkit.GetString("ai.key")
 			if apiKey == "" {
 				log.Fatal("ai api key is not set")
 			}
 
-			// 创建 deepseek 模型：https://github.com/cloudwego/eino-ext/blob/main/components/model/deepseek/examples/deepseek.go
-			// 用openai来请求阿里百炼。todo deepseek直接调用百炼，404
-			cm, err := deepseek.NewChatModel(ctx, &deepseek.ChatModelConfig{
+			client := aikit.NewChatModelClient(aikit.ChatModelConfig{
 				APIKey:  apiKey,
 				Model:   "deepseek-r1-distill-llama-70b",
-				BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+				BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
 			})
-			if err != nil {
-				log.Fatal(err)
-			}
+			client.Request([]schema.Message{
+				{
+					Role:    schema.User,
+					Content: "说下你是谁？",
+				},
+			})
 
 			//fmt.Println("\n=== Basic Chat ===")
 			//basicChat(ctx, cm)
 
-			fmt.Println("\n=== Streaming Chat ===")
-			streamingChat(ctx, cm)
+			//fmt.Println("\n=== Streaming Chat ===")
+			//streamingChat(ctx, cm)
 			//
 			//fmt.Println("\n=== Prefix ===")
 			//prefixChat(ctx, cm)
