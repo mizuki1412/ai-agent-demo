@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cloudwego/eino/schema"
 	"github.com/mizuki1412/go-core-kit/v2/class/exception"
+	"mizuki/project/ai-agent-demo/framekit"
 	"mizuki/project/ai-agent-demo/httpkit"
 )
 
@@ -60,4 +61,10 @@ func (client *ChatModelClient) Request(messages []schema.Message) {
 		},
 	})
 	fmt.Println(string(all))
+}
+
+func newApiResDecoder() *framekit.Decoder {
+	return framekit.NewDecoder(1024, func(bytes []byte) []byte {
+		// 百炼的格式： data: {} ; data: [DONE]
+	})
 }

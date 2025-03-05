@@ -1,12 +1,13 @@
 module mizuki/project/ai-agent-demo
 
-go 1.24.0
+go 1.23.3
+
+toolchain go1.24.0
 
 require (
 	github.com/cloudwego/eino v0.3.14
 	github.com/cloudwego/eino-ext/components/model/deepseek v0.0.0-20250302114650-c4c0c067aa2b
 	github.com/mizuki1412/go-core-kit/v2 v2.1.2
-	github.com/spf13/cast v1.7.1
 	github.com/spf13/cobra v1.8.1
 )
 
@@ -48,6 +49,7 @@ require (
 	github.com/slongfield/pyfmt v0.0.0-20220222012616-ea85ff4c361f // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
+	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.19.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
