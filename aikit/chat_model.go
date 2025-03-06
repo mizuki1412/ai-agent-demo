@@ -1,9 +1,10 @@
 package aikit
 
 import (
-	"fmt"
-	"github.com/cloudwego/eino/schema"
 	"github.com/mizuki1412/go-core-kit/v2/class/exception"
+	"github.com/mizuki1412/go-core-kit/v2/library/jsonkit"
+	"log"
+	"mizuki/project/ai-agent-demo/aikit/schema"
 	"mizuki/project/ai-agent-demo/framekit"
 	"mizuki/project/ai-agent-demo/httpkit"
 )
@@ -39,7 +40,14 @@ func NewChatModelClient(config ChatModelConfig) *ChatModelClient {
 }
 
 func (client *ChatModelClient) Request(messages []schema.Message) {
-	var all []byte
+	decoder := newApiResDecoder()
+	req := schema.RequestBody{
+		Model:         client.Config.Model,
+		Messages:      messages,
+		Stream:        true,
+		StreamOptions: schema.StreamOption{IncludeUsage: true},
+	}
+	overChan := make(chan bool)
 	httpkit.Request(httpkit.Req{
 		Url:         client.Config.BaseURL,
 		Method:      "post",
@@ -47,24 +55,85 @@ func (client *ChatModelClient) Request(messages []schema.Message) {
 		Header: map[string]string{
 			"Authorization": "Bearer " + client.Config.APIKey,
 		},
-		JsonData: map[string]any{
-			"model":    client.Config.Model,
-			"messages": messages,
-			"stream":   true,
-			"stream_options": map[string]any{
-				"include_usage": true,
-			},
-		},
-		Stream: true,
+		JsonData: req,
+		Stream:   true,
 		StreamHandler: func(data []byte) {
-			all = append(all, data...)
+			decoder.Put(data)
+			r, over := decoder.Take()
+			if len(r) > 0 {
+				// todo take 需要改成自动触发的
+				println(string(r))
+				res := &schema.ResponseBody{}
+				jsonkit.ParseObj(string(r), res)
+
+			}
+			log.Println(over)
+			if over {
+				overChan <- true
+			}
 		},
 	})
-	fmt.Println(string(all))
+	<-overChan
 }
 
 func newApiResDecoder() *framekit.Decoder {
-	return framekit.NewDecoder(1024, func(bytes []byte) []byte {
+	return framekit.NewDecoder(1024, func(bytes []byte) ([]byte, []byte, bool) {
 		// 百炼的格式： data: {} ; data: [DONE]
+		i := 0
+		// 找到json字符串起点
+		beginFlag := 0
+		// 存放json首尾标记符
+		jsonFlags := make([]byte, 0, 10)
+		for {
+			if beginFlag == 0 {
+				// 寻找data:
+				if len(bytes) <= i+6+6 {
+					break
+				}
+				// 结束
+				if string(bytes[i:i+6+6]) == "data: [DONE]" {
+					return bytes, nil, true
+				}
+				if string(bytes[i:i+6]) == "data: " {
+					i += 6
+					beginFlag = i
+					continue
+				}
+			} else {
+				if i >= len(bytes) {
+					break
+				}
+				switch bytes[i] {
+				case '[', '{':
+					// 排除作为内容含义的[{
+					if len(jsonFlags) > 0 && jsonFlags[len(jsonFlags)-1] != '"' {
+						jsonFlags = append(jsonFlags, bytes[i])
+					}
+				case '"':
+					if len(jsonFlags) > 0 && jsonFlags[len(jsonFlags)-1] != '"' {
+						jsonFlags = append(jsonFlags, bytes[i])
+					} else if len(jsonFlags) > 0 && jsonFlags[len(jsonFlags)-1] == '"' {
+						jsonFlags = jsonFlags[:len(jsonFlags)-1]
+					}
+				case ']':
+					if len(jsonFlags) > 0 && jsonFlags[len(jsonFlags)-1] == '[' {
+						jsonFlags = jsonFlags[:len(jsonFlags)-1]
+					}
+				case '}':
+					if len(jsonFlags) > 0 && jsonFlags[len(jsonFlags)-1] == '{' {
+						jsonFlags = jsonFlags[:len(jsonFlags)-1]
+					}
+					// 识别是否结束
+					if len(jsonFlags) == 0 {
+						if i+1 == len(bytes) {
+							return []byte{}, bytes[beginFlag : i+1], false
+						}
+						return bytes[i:], bytes[beginFlag : i+1], false
+					}
+				}
+			}
+			i++
+		}
+		return bytes, nil, false
 	})
 }
