@@ -2,11 +2,13 @@ package main
 
 import (
 	"github.com/mizuki1412/go-core-kit/v2/cli"
+	"github.com/mizuki1412/go-core-kit/v2/library/jsonkit"
+	"github.com/mizuki1412/go-core-kit/v2/service/aikit"
+	"github.com/mizuki1412/go-core-kit/v2/service/aikit/schema"
 	"github.com/mizuki1412/go-core-kit/v2/service/configkit"
 	"github.com/spf13/cobra"
 	"log"
-	"mizuki/project/ai-agent-demo/aikit"
-	"mizuki/project/ai-agent-demo/aikit/schema"
+	"time"
 )
 
 func main() {
@@ -25,13 +27,19 @@ func main() {
 				Model:   "deepseek-r1-distill-llama-70b",
 				BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
 			})
-			client.Request([]schema.Message{
+			start := time.Now()
+			res, usage := client.Request([]schema.Message{
 				{
 					Role:    schema.User,
 					Content: "说下你是谁？",
 				},
 			})
-			log.Println("over")
+			log.Println("推理过程:  " + res.ReasoningContent)
+			log.Println("结果:  " + res.Content)
+			if usage != nil {
+				log.Println("消耗:  " + jsonkit.ToString(usage))
+			}
+			log.Println("耗时:  " + time.Since(start).String())
 		},
 	}
 	r.Flags().String("ai.key", "", "")
