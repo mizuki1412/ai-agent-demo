@@ -59,21 +59,18 @@ func (client *ChatModelClient) Request(messages []schema.Message) {
 		Stream:   true,
 		StreamHandler: func(data []byte) {
 			decoder.Put(data)
-			r, over := decoder.Take()
-			if len(r) > 0 {
-				// todo take 需要改成自动触发的
-				println(string(r))
-				res := &schema.ResponseBody{}
-				jsonkit.ParseObj(string(r), res)
-
-			}
-			log.Println(over)
-			if over {
-				overChan <- true
-			}
 		},
 	})
+	decoder.Recv(func(bytes []byte) {
+		println(string(bytes))
+		res := &schema.ResponseBody{}
+		jsonkit.ParseObj(string(bytes), res)
+		// todo
+
+		overChan <- true
+	})
 	<-overChan
+	log.Println("finish")
 }
 
 func newApiResDecoder() *framekit.Decoder {
